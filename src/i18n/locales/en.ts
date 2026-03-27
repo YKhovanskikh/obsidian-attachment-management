@@ -160,7 +160,14 @@ export const en: TranslationMap = {
 
   // 通知消息
   notifications: {
-    arrangeCompleted: "Arrange completed",
+    arrangeCompletedTitle: "Arrange completed in {duration}",
+    arrangeCompletedScanned:
+      "Scanned {scannedFiles} files. Checked {processedNotes}/{totalNotes} notes and {processedLinks}/{totalLinks} links.",
+    arrangeCompletedResults:
+      "Moved {movedLinks}, deduplicated {deduplicatedLinks}, deleted duplicate files {deletedDuplicateFiles}, unchanged {unchangedLinks}, skipped {skippedLinks}.",
+    arrangeProgressScan: "Scanning files for rearrange: {scannedFiles}/{totalFiles}",
+    arrangeProgressRun:
+      "Rearranging attachments: notes {processedNotes}/{totalNotes}, links {processedLinks}/{totalLinks}, moved {movedLinks}, deduplicated {deduplicatedLinks}",
     fileExcluded: "{path} was excluded",
     fileExcludedSkipped: "{path} was excluded, skipped",
     fileExcludedFromManagement: "{path} was excluded from attachment management.",

@@ -158,7 +158,14 @@ export const zhCn: TranslationMap = {
 
   // 通知消息
   notifications: {
-    arrangeCompleted: "整理完成",
+    arrangeCompletedTitle: "整理完成，用时 {duration}",
+    arrangeCompletedScanned:
+      "扫描了 {scannedFiles} 个文件。检查了 {processedNotes}/{totalNotes} 个笔记和 {processedLinks}/{totalLinks} 个链接。",
+    arrangeCompletedResults:
+      "移动 {movedLinks} 个，去重 {deduplicatedLinks} 个，删除重复文件 {deletedDuplicateFiles} 个，无变化 {unchangedLinks} 个，跳过 {skippedLinks} 个。",
+    arrangeProgressScan: "正在扫描需要整理的文件：{scannedFiles}/{totalFiles}",
+    arrangeProgressRun:
+      "正在整理附件：笔记 {processedNotes}/{totalNotes}，链接 {processedLinks}/{totalLinks}，已移动 {movedLinks}，已去重 {deduplicatedLinks}",
     fileExcluded: "{path} 已被排除",
     fileExcludedSkipped: "{path} 已被排除，已跳过",
     fileExcludedFromManagement: "{path} 已从附件管理中排除",
