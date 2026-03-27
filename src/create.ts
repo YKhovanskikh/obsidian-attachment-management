@@ -9,6 +9,7 @@ import { isExcluded } from "./exclude";
 import { getExtensionOverrideSetting } from "./model/extensionOverride";
 import { isCanvasFile, isImage, isMarkdownFile, isPastedImage, md5sum } from "./utils";
 import { saveOriginalName } from "./lib/originalStorage";
+import { t } from "./i18n";
 
 export class CreateHandler {
   readonly plugin: Plugin;
@@ -31,7 +32,7 @@ export class CreateHandler {
     // ignore if the path of notes file has been excluded.
     if (source.parent && isExcluded(source.parent.path, this.settings)) {
       debugLog("processAttach - not a file or exclude path:", source.path);
-      new Notice(`${source.path} was excluded from attachment management.`);
+      new Notice(t("notifications.fileExcludedFromManagement", { path: source.path }));
       return;
     }
 
@@ -97,7 +98,7 @@ export class CreateHandler {
     try {
       await this.app.fileManager.renameFile(attach, dst);
       await this.updateSourceReferenceAfterRename(source, oldPath, oldMarkdownLink, dst);
-      new Notice(`Renamed ${name} to ${attachName}.`);
+      new Notice(t("notifications.attachmentRenamed", { from: name, to: attachName }));
     } finally {
       await this.persistOriginalName(source, original, attach);
     }

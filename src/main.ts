@@ -142,7 +142,7 @@ export default class AttachmentManagementPlugin extends Plugin {
           if (file instanceof TFile) {
             if (file.parent && isExcluded(file.parent.path, this.settings)) {
               debugLog("rename - exclude path:", file.parent.path);
-              new Notice(t("notices.fileExcluded", { path: file.path }));
+              new Notice(t("notifications.fileExcluded", { path: file.path }));
               return;
             }
 
@@ -205,7 +205,7 @@ export default class AttachmentManagementPlugin extends Plugin {
 
           if (deleteOverrideSetting(this.settings, file)) {
             await this.saveSettings();
-            new Notice("Removed override setting of " + file.path);
+            new Notice(t("notifications.overrideRemoved", { path: file.path }));
           }
         })
       );
@@ -251,7 +251,7 @@ export default class AttachmentManagementPlugin extends Plugin {
 
     this.addCommand({
       id: "attachment-management-override-setting",
-      name: "Overriding setting",
+      name: t("commands.overrideAttachmentSetting"),
       checkCallback: (checking: boolean) => {
         const file = getActiveFile(this.app);
 
@@ -262,7 +262,7 @@ export default class AttachmentManagementPlugin extends Plugin {
 
           if (!checking) {
             if (file.parent && isExcluded(file.parent.path, this.settings)) {
-              new Notice(`${file.path} was excluded`);
+              new Notice(t("notifications.fileExcluded", { path: file.path }));
               return true;
             }
             const { setting } = getOverrideSetting(this.settings, file);
@@ -287,7 +287,7 @@ export default class AttachmentManagementPlugin extends Plugin {
 
           if (!checking) {
             if (file.parent && isExcluded(file.parent.path, this.settings)) {
-              new Notice(`${file.path} was excluded`);
+              new Notice(t("notifications.fileExcluded", { path: file.path }));
               return true;
             }
             delete this.settings.overridePath[file.path];

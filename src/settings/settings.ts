@@ -326,7 +326,7 @@ export class AttachmentManagementSettingTab extends PluginSettingTab {
                 }
                 await this.plugin.saveSettings();
                 this.display();
-                new Notice(t("settings.extensionOverride.saveNotice"));
+                new Notice(t("notifications.extensionOverrideSaved"));
               });
           });
       });

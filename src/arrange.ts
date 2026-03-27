@@ -11,6 +11,7 @@ import { getMetadata } from "./settings/metadata";
 import { getActiveFile } from "./commons";
 import { isExcluded } from "./exclude";
 import { containOriginalNameVariable, loadOriginalName } from "./lib/originalStorage";
+import { t } from "./i18n";
 
 const bannerRegex = /!\[\[(.*?)\]\]/i;
 
@@ -191,7 +192,7 @@ export class ArrangeHandler {
       if (file) {
         if ((file.parent && isExcluded(file.parent.path, this.settings)) || isAttachment(this.settings, file, this.app)) {
           allFiles = [];
-          new Notice(`${file.path} was excluded, skipped`);
+          new Notice(t("notifications.fileExcludedSkipped", { path: file.path }));
         } else {
           debugLog("getAttachmentsInVaultByLinks - active:", file.path);
           allFiles = [file];
@@ -204,7 +205,7 @@ export class ArrangeHandler {
     } else if (type == RearrangeType.FILE && file != undefined) {
       if ((file.parent && isExcluded(file.parent.path, this.settings)) || isAttachment(this.settings, file, this.app)) {
         allFiles = [];
-        new Notice(`${file.path} was excluded, skipped`);
+        new Notice(t("notifications.fileExcludedSkipped", { path: file.path }));
       } else {
         debugLog("getAttachmentsInVaultByLinks - file:", file.path);
         allFiles = [file];

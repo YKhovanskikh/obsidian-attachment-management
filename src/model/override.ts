@@ -152,7 +152,7 @@ export class OverrideModal extends Modal {
           delete this.plugin.settings.overridePath[this.file.path];
           await this.plugin.saveSettings();
           await this.plugin.loadSettings();
-          new Notice(t("override.notifications.reset", { path: this.file.path }));
+          new Notice(t("notifications.overrideReset", { path: this.file.path }));
           this.close();
         });
       })
@@ -169,7 +169,7 @@ export class OverrideModal extends Modal {
             this.plugin.settings.overridePath[this.file.path] = this.setting;
             await this.plugin.saveSettings();
             debugLog("override - overriding settings:", this.file.path, this.setting);
-            new Notice(t("override.notifications.overridden", { path: this.file.path }));
+            new Notice(t("notifications.overrideApplied", { path: this.file.path }));
             this.close();
           })
       );
