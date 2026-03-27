@@ -73,6 +73,8 @@ export interface AttachmentManagementPluginSettings {
   excludeSubpaths: boolean;
   // Presistence storage of original name
   originalNameStorage: OriginalNameStorage[];
+  // Max file size in MB for SHA-256 duplicate confirmation, 0 means no limit
+  deduplicateSha256MaxSizeMb: number;
   // Path of notes that override global configuration
   overridePath: Record<string, AttachmentPathSettings>;
 }
@@ -92,6 +94,7 @@ export const DEFAULT_SETTINGS: AttachmentManagementPluginSettings = {
   excludePathsArray: [],
   excludeSubpaths: false,
   originalNameStorage: [],
+  deduplicateSha256MaxSizeMb: 10,
   overridePath: {},
   disableNotification: false,
 };
@@ -230,6 +233,24 @@ export class AttachmentManagementSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         })
       );
+
+    new Setting(containerEl)
+      .setName(t("settings.deduplicateSha256MaxSize.name"))
+      .setDesc(t("settings.deduplicateSha256MaxSize.desc"))
+      .addText((text) => {
+        text.inputEl.type = "number";
+        text.inputEl.min = "0";
+        text.inputEl.step = "0.1";
+        text
+          .setPlaceholder(String(DEFAULT_SETTINGS.deduplicateSha256MaxSizeMb))
+          .setValue(String(this.plugin.settings.deduplicateSha256MaxSizeMb))
+          .onChange(async (value) => {
+            const parsed = Number.parseFloat(value);
+            this.plugin.settings.deduplicateSha256MaxSizeMb =
+              Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_SETTINGS.deduplicateSha256MaxSizeMb;
+            await this.plugin.saveSettings();
+          });
+      });
 
     new Setting(containerEl)
       .setName(t("settings.extensionOverride.name"))

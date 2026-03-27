@@ -50,6 +50,10 @@ export const zhCn: TranslationMap = {
       name: "自动重命名附件",
       desc: "当您重命名对应 md/canvas 文件所在的文件夹/文件名时，自动重命名附件文件夹/文件名。"
     },
+    deduplicateSha256MaxSize: {
+      name: "SHA-256 比较大小限制（MB）",
+      desc: "当文件 MD5 和大小一致时，仅在不超过该大小时继续比较 SHA-256。填 0 表示不限制。"
+    },
     extensionOverride: {
       name: "扩展名覆盖",
       desc: "如果您想要对特定扩展名的附件进行自动重命名（例如 pdf 或 zip），请使用扩展名覆盖。",

@@ -1,4 +1,4 @@
-import { App, Notice, TFile, TFolder, Plugin } from "obsidian";
+import { App, Notice, Plugin, TFile, parseLinktext } from "obsidian";
 import { path } from "./lib/path";
 import { debugLog } from "./lib/log";
 import { getOverrideSetting } from "./override";
@@ -40,17 +40,14 @@ export class ArrangeHandler {
    * @param {string} oldPath - The old path of the file (optional), used for rename event.
    */
   async rearrangeAttachment(type: RearrangeType, file?: TFile, oldPath?: string) {
-    if (!this.settings.autoRenameAttachment) {
-      debugLog("rearrangeAttachment - autoRenameAttachment not enable");
-      return;
-    }
-
     // only rearrange attachment that linked by markdown or canvas
     const attachments = await this.getAttachmentsInVault(this.settings, type, file, oldPath);
     debugLog("rearrangeAttachment - attachments:", Object.keys(attachments).length, Object.entries(attachments));
+    const duplicateCandidates = new Set<string>();
+
     for (const obNote of Object.keys(attachments)) {
       const innerFile = this.app.vault.getAbstractFileByPath(obNote);
-      if (!(innerFile instanceof TFile) || isAttachment(this.settings, innerFile)) {
+      if (!(innerFile instanceof TFile) || isAttachment(this.settings, innerFile, this.app)) {
         debugLog(`rearrangeAttachment - ${obNote} not exists or is attachment, skipped`);
         continue;
       }
@@ -117,17 +114,32 @@ export class ArrangeHandler {
           continue;
         }
 
-        const attachPathFile = this.app.vault.getAbstractFileByPath(attachPath);
-        if (attachPathFile === null || !(attachPathFile instanceof TFolder)) {
-          debugLog(`${attachPath} not exists, skipped`);
+        const { name, duplicateOf } = await deduplicateNewName(
+          this.app,
+          this.settings,
+          attachName + "." + path.extname(link),
+          attachPath,
+          linkFile
+        );
+        if (duplicateOf) {
+          const updated = await this.replaceAttachmentReferenceInSource(innerFile, linkFile, duplicateOf);
+          if (updated) {
+            duplicateCandidates.add(linkFile.path);
+          }
           continue;
         }
-        const { name } = await deduplicateNewName(attachName + "." + path.extname(link), attachPathFile);
-        debugLog("rearrangeAttachment - deduplicated name:", name);
 
-        await this.app.fileManager.renameFile(linkFile, path.join(attachPath, name));
+        debugLog("rearrangeAttachment - deduplicated name:", name);
+        const oldPath = linkFile.path;
+        const oldMarkdownLink = this.app.fileManager.generateMarkdownLink(linkFile, innerFile.path);
+        const newPath = path.join(attachPath, name);
+
+        await this.app.fileManager.renameFile(linkFile, newPath);
+        await this.updateSourceReferenceAfterRename(innerFile, oldPath, oldMarkdownLink, newPath);
       }
     }
+
+    await this.cleanupDuplicateAttachments(duplicateCandidates);
   }
 
   /**
@@ -177,7 +189,7 @@ export class ArrangeHandler {
     } else if (type == RearrangeType.ACTIVE) {
       const file = getActiveFile(this.app);
       if (file) {
-        if ((file.parent && isExcluded(file.parent.path, this.settings)) || isAttachment(this.settings, file)) {
+        if ((file.parent && isExcluded(file.parent.path, this.settings)) || isAttachment(this.settings, file, this.app)) {
           allFiles = [];
           new Notice(`${file.path} was excluded, skipped`);
         } else {
@@ -190,7 +202,7 @@ export class ArrangeHandler {
         }
       }
     } else if (type == RearrangeType.FILE && file != undefined) {
-      if ((file.parent && isExcluded(file.parent.path, this.settings)) || isAttachment(this.settings, file)) {
+      if ((file.parent && isExcluded(file.parent.path, this.settings)) || isAttachment(this.settings, file, this.app)) {
         allFiles = [];
         new Notice(`${file.path} was excluded, skipped`);
       } else {
@@ -216,7 +228,7 @@ export class ArrangeHandler {
         const attachmentsSet: Set<string> = new Set();
         if (links) {
           for (const [filePath] of Object.entries(links)) {
-            if (isAttachment(settings, filePath)) {
+            if (isAttachment(settings, filePath, this.app)) {
               this.addToSet(attachmentsSet, filePath);
             }
           }
@@ -248,7 +260,7 @@ export class ArrangeHandler {
               if (formatMatch && formatMatch[1]) {
                 const fileName = formatMatch[1];
                 const file = this.app.metadataCache.getFirstLinkpathDest(fileName, obsFile.path);
-                if (file && isAttachment(settings, file.path)) {
+                if (file && isAttachment(settings, file.path, this.app)) {
                   this.addToSet(attachmentsSet, file.path);
                 }
               }
@@ -258,7 +270,7 @@ export class ArrangeHandler {
         // Any Additional Link
         const linkMatches: LinkMatch[] = await getAllLinkMatchesInFile(obsFile, this.app);
         for (const linkMatch of linkMatches) {
-          if (isAttachment(settings, linkMatch.linkText)) {
+          if (isAttachment(settings, linkMatch.linkText, this.app)) {
             this.addToSet(attachmentsSet, linkMatch.linkText);
           }
         }
@@ -280,13 +292,13 @@ export class ArrangeHandler {
           for (const node of canvasData.nodes) {
             // node.type: 'text' | 'file'
             if (node.type === "file") {
-              if (isAttachment(settings, node.file)) {
+              if (isAttachment(settings, node.file, this.app)) {
                 this.addToSet(attachmentsSet, node.file);
               }
             } else if (node.type == "text") {
               const linkMatches: LinkMatch[] = await getAllLinkMatchesInFile(obsFile, this.app, node.text);
               for (const linkMatch of linkMatches) {
-                if (isAttachment(settings, linkMatch.linkText)) {
+                if (isAttachment(settings, linkMatch.linkText, this.app)) {
                   this.addToSet(attachmentsSet, linkMatch.linkText);
                 }
               }
@@ -317,6 +329,219 @@ export class ArrangeHandler {
     if (!setObj.has(value)) {
       setObj.add(value);
     }
+  }
+
+  async replaceAttachmentReferenceInSource(source: TFile, oldAttach: TFile, newAttach: TFile): Promise<boolean> {
+    if (isMarkdownFile(source.extension)) {
+      const { text, updated } = await this.rewriteAttachmentLinks(source, oldAttach, newAttach);
+      if (!updated) {
+        return false;
+      }
+
+      await this.app.vault.modify(source, text);
+      return true;
+    }
+
+    if (isCanvasFile(source.extension)) {
+      const fileRead = await this.app.vault.cachedRead(source);
+      if (!fileRead || fileRead.length === 0) {
+        return false;
+      }
+
+      let canvasData;
+      try {
+        canvasData = JSON.parse(fileRead);
+      } catch (e) {
+        debugLog("replaceAttachmentReferenceInSource - parse canvas data error", e);
+        return false;
+      }
+
+      let updated = false;
+      if (canvasData.nodes && canvasData.nodes.length > 0) {
+        for (const node of canvasData.nodes) {
+          if (node.type === "file" && node.file === oldAttach.path) {
+            node.file = newAttach.path;
+            updated = true;
+            continue;
+          }
+
+          if (node.type === "text" && typeof node.text === "string") {
+            const rewritten = await this.rewriteAttachmentLinks(source, oldAttach, newAttach, node.text);
+            if (rewritten.updated) {
+              node.text = rewritten.text;
+              updated = true;
+            }
+          }
+        }
+      }
+
+      if (!updated) {
+        return false;
+      }
+
+      await this.app.vault.modify(source, JSON.stringify(canvasData, null, 2));
+      return true;
+    }
+
+    return false;
+  }
+
+  async updateSourceReferenceAfterRename(source: TFile, oldPath: string, oldMarkdownLink: string, newPath: string) {
+    const renamedAttach = this.app.vault.getAbstractFileByPath(newPath);
+    if (!(renamedAttach instanceof TFile)) {
+      return;
+    }
+
+    if (isMarkdownFile(source.extension)) {
+      const newMarkdownLink = this.app.fileManager.generateMarkdownLink(renamedAttach, source.path);
+      await this.app.vault.process(source, (data) => data.split(oldMarkdownLink).join(newMarkdownLink));
+      return;
+    }
+
+    if (isCanvasFile(source.extension)) {
+      await this.app.vault.process(source, (data) => data.split(oldPath).join(newPath));
+    }
+  }
+
+  async rewriteAttachmentLinks(
+    source: TFile,
+    oldAttach: TFile,
+    newAttach: TFile,
+    fileText?: string
+  ): Promise<{ text: string; updated: boolean }> {
+    const originalText = fileText ?? (await this.app.vault.read(source));
+    const linkMatches = await getAllLinkMatchesInFile(source, this.app, originalText);
+
+    let text = originalText;
+    let updated = false;
+    for (const linkMatch of linkMatches) {
+      if (linkMatch.linkText !== oldAttach.path) {
+        continue;
+      }
+
+      const replacement = this.buildReplacementLink(source, newAttach, linkMatch);
+      if (replacement === linkMatch.match) {
+        continue;
+      }
+
+      text = text.split(linkMatch.match).join(replacement);
+      updated = true;
+    }
+
+    return { text, updated };
+  }
+
+  buildReplacementLink(source: TFile, newAttach: TFile, linkMatch: LinkMatch): string {
+    if (linkMatch.type === "wiki" || linkMatch.type === "wikiTransclusion") {
+      const wikiMatch = /^\[\[(.*)\]\]$/.exec(linkMatch.match);
+      if (!wikiMatch) {
+        return linkMatch.match;
+      }
+
+      const body = wikiMatch[1];
+      const pipeIndex = body.indexOf("|");
+      const rawLinkText = pipeIndex >= 0 ? body.slice(0, pipeIndex) : body;
+      const alias = pipeIndex >= 0 ? body.slice(pipeIndex + 1) : undefined;
+      const { subpath } = parseLinktext(rawLinkText);
+      const newLinkText = this.app.metadataCache.fileToLinktext(newAttach, source.path, false);
+
+      return `[[${newLinkText}${subpath}${alias !== undefined ? `|${alias}` : ""}]]`;
+    }
+
+    if (linkMatch.type === "markdown" || linkMatch.type === "mdTransclusion") {
+      const markdownMatch = /^\[(.*)\]\((.*)\)$/.exec(linkMatch.match);
+      if (!markdownMatch) {
+        return linkMatch.match;
+      }
+
+      const alias = markdownMatch[1];
+      const { subpath } = parseLinktext(markdownMatch[2]);
+      const newLinkText = this.app.metadataCache.fileToLinktext(newAttach, source.path, false);
+
+      return `[${alias}](${newLinkText}${subpath})`;
+    }
+
+    return linkMatch.match;
+  }
+
+  async cleanupDuplicateAttachments(duplicateCandidates: Set<string>) {
+    if (duplicateCandidates.size === 0) {
+      return;
+    }
+
+    const referencedAttachments = await this.collectReferencedAttachments();
+    for (const duplicatePath of duplicateCandidates) {
+      if (referencedAttachments.has(duplicatePath)) {
+        continue;
+      }
+
+      const duplicateFile = this.app.vault.getAbstractFileByPath(duplicatePath);
+      if (!(duplicateFile instanceof TFile)) {
+        continue;
+      }
+
+      await this.app.vault.delete(duplicateFile, true);
+      debugLog("cleanupDuplicateAttachments - deleted duplicate:", duplicatePath);
+    }
+  }
+
+  async collectReferencedAttachments(): Promise<Set<string>> {
+    const referencedAttachments = new Set<string>();
+
+    for (const file of this.app.vault.getFiles()) {
+      if (isAttachment(this.settings, file, this.app)) {
+        continue;
+      }
+
+      if (isMarkdownFile(file.extension)) {
+        const linkMatches = await getAllLinkMatchesInFile(file, this.app);
+        for (const linkMatch of linkMatches) {
+          if (isAttachment(this.settings, linkMatch.linkText, this.app)) {
+            referencedAttachments.add(linkMatch.linkText);
+          }
+        }
+        continue;
+      }
+
+      if (!isCanvasFile(file.extension)) {
+        continue;
+      }
+
+      const fileRead = await this.app.vault.cachedRead(file);
+      if (!fileRead || fileRead.length === 0) {
+        continue;
+      }
+
+      let canvasData;
+      try {
+        canvasData = JSON.parse(fileRead);
+      } catch (e) {
+        debugLog("collectReferencedAttachments - parse canvas data error", e);
+        continue;
+      }
+
+      if (!canvasData.nodes || canvasData.nodes.length === 0) {
+        continue;
+      }
+
+      for (const node of canvasData.nodes) {
+        if (node.type === "file" && isAttachment(this.settings, node.file, this.app)) {
+          referencedAttachments.add(node.file);
+          continue;
+        }
+
+        if (node.type === "text" && typeof node.text === "string") {
+          const linkMatches = await getAllLinkMatchesInFile(file, this.app, node.text);
+          for (const linkMatch of linkMatches) {
+            if (isAttachment(this.settings, linkMatch.linkText, this.app)) {
+              referencedAttachments.add(linkMatch.linkText);
+            }
+          }
+        }
+      }
+    }
+
+    return referencedAttachments;
   }
 
   needToRename(

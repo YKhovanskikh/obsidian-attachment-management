@@ -50,6 +50,10 @@ export const en: TranslationMap = {
       name: "Automatically rename attachment",
       desc: "Automatically rename the attachment folder/filename when you rename the folder/filename where the corresponding md/canvas file be placed."
     },
+    deduplicateSha256MaxSize: {
+      name: "SHA-256 compare size limit (MB)",
+      desc: "If files with the same MD5 also match by size, compare SHA-256 only up to this size. Use 0 for no limit."
+    },
     extensionOverride: {
       name: "Extension override",
       desc: "Using the extension override if you want to autorename the attachment with a specific extension (e.g. pdf or zip).",

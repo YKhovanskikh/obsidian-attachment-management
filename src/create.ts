@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, TFile, TFolder, normalizePath } from "obsidian";
+import { App, Notice, Plugin, TFile, normalizePath } from "obsidian";
 import { deduplicateNewName } from "./lib/deduplicate";
 import { path } from "./lib/path";
 import { debugLog } from "./lib/log";
@@ -27,7 +27,7 @@ export class CreateHandler {
    * @param source - the notes file that linked to attach
    * @returns - none
    */
-  processAttach(attach: TFile, source: TFile) {
+  async processAttach(attach: TFile, source: TFile) {
     // ignore if the path of notes file has been excluded.
     if (source.parent && isExcluded(source.parent.path, this.settings)) {
       debugLog("processAttach - not a file or exclude path:", source.path);
@@ -49,28 +49,30 @@ export class CreateHandler {
     debugLog("processAttach - metadata:", metadata);
 
     const attachPath = metadata.getAttachmentPath(setting, this.settings.dateFormat);
-    metadata
-      .getAttachFileName(setting, this.settings.dateFormat, attach.basename, this.app.vault.adapter)
-      .then((attachName) => {
-        attachName = attachName + "." + attach.extension;
-        // make sure the attachment path was created
-        this.app.vault.adapter
-          .exists(attachPath, true)
-          .then(async (exists) => {
-            if (!exists) {
-              await this.app.vault.adapter.mkdir(attachPath);
-              debugLog("processAttach - create path:", attachPath);
-            }
-          })
-          .finally(() => {
-            const attachPathFolder = this.app.vault.getAbstractFileByPath(attachPath) as TFolder;
-            // deduplicate the new name if needed
-            deduplicateNewName(attachName, attachPathFolder).then(({ name }) => {
-              debugLog("processAttach - new path of file:", path.join(attachPath, name));
-              void this.renameCreateFile(attach, attachPath, name, source);
-            });
-          });
-      });
+    let attachName = await metadata.getAttachFileName(
+      setting,
+      this.settings.dateFormat,
+      attach.basename,
+      this.app.vault.adapter
+    );
+    attachName = attachName + "." + attach.extension;
+
+    if (!(await this.app.vault.adapter.exists(attachPath, true))) {
+      await this.app.vault.adapter.mkdir(attachPath);
+      debugLog("processAttach - create path:", attachPath);
+    }
+
+    const { name, duplicateOf } = await deduplicateNewName(this.app, this.settings, attachName, attachPath, attach);
+    if (duplicateOf) {
+      const oldMarkdownLink = this.app.fileManager.generateMarkdownLink(attach, source.path);
+      await this.updateSourceReferenceAfterRename(source, attach.path, oldMarkdownLink, duplicateOf.path);
+      await this.persistOriginalName(source, attach.basename, duplicateOf);
+      await this.app.vault.delete(attach, true);
+      return;
+    }
+
+    debugLog("processAttach - new path of file:", path.join(attachPath, name));
+    await this.renameCreateFile(attach, attachPath, name, source);
   }
 
   /**
@@ -97,15 +99,7 @@ export class CreateHandler {
       await this.updateSourceReferenceAfterRename(source, oldPath, oldMarkdownLink, dst);
       new Notice(`Renamed ${name} to ${attachName}.`);
     } finally {
-      // save origianl name in setting
-      const { setting } = getOverrideSetting(this.settings, source);
-      md5sum(this.app.vault.adapter, attach).then((md5) => {
-        saveOriginalName(this.settings, setting, attach.extension, {
-          n: original,
-          md5: md5,
-        });
-        this.plugin.saveData(this.settings);
-      });
+      await this.persistOriginalName(source, original, attach);
     }
   }
 
@@ -136,5 +130,16 @@ export class CreateHandler {
         return updated;
       });
     }
+  }
+
+  async persistOriginalName(source: TFile, originalName: string, fileToHash: TFile) {
+    const { setting } = getOverrideSetting(this.settings, source);
+    const md5 = await md5sum(this.app.vault.adapter, fileToHash);
+
+    saveOriginalName(this.settings, setting, fileToHash.extension, {
+      n: originalName,
+      md5: md5,
+    });
+    await this.plugin.saveData(this.settings);
   }
 }
