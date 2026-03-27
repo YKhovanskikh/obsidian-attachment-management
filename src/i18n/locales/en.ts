@@ -98,10 +98,6 @@ export const en: TranslationMap = {
     buttons: {
       reset: "Reset",
       submit: "Submit"
-    },
-    notifications: {
-      reset: "Reset attachment setting of {path}",
-      overridden: "Overridden attachment setting of {path}"
     }
   },
 
@@ -148,26 +144,6 @@ export const en: TranslationMap = {
     deleteExtensionOverride: "Are you sure you want to delete this extension override?"
   },
 
-  // 通知消息
-  notices: {
-    settingsSaved: "Settings saved successfully",
-    overrideSaved: "Override setting saved successfully",
-    overrideDeleted: "Override setting deleted successfully",
-    extensionOverrideSaved: "Extension override saved successfully",
-    extensionOverrideDeleted: "Extension override deleted successfully",
-    attachmentRenamed: "Attachment renamed successfully",
-    attachmentMoved: "Attachment moved successfully",
-    arrangeCompleted: "Arrange completed",
-    fileExcluded: "{path} was excluded",
-    resetAttachmentSetting: "Reset attachment setting of {path}",
-    error: {
-      invalidPath: "Invalid path specified",
-      fileNotFound: "File not found",
-      permissionDenied: "Permission denied",
-      unknownError: "An unknown error occurred"
-    }
-  },
-
   // 命令
   commands: {
     rearrangeActiveFile: "Rearrange attachments for active file",
@@ -181,6 +157,27 @@ export const en: TranslationMap = {
   },
 
 
+
+  // 通知消息
+  notifications: {
+    arrangeCompleted: "Arrange completed",
+    fileExcluded: "{path} was excluded",
+    fileExcludedSkipped: "{path} was excluded, skipped",
+    fileExcludedFromManagement: "{path} was excluded from attachment management.",
+    resetAttachmentSetting: "Reset attachment setting of {path}",
+    overrideRemoved: "Removed override setting of {path}",
+    overrideReset: "Reset attachment setting of {path}",
+    overrideApplied: "Overridden attachment setting of {path}",
+    attachmentRenamed: "Renamed {from} to {to}.",
+    extensionOverrideSaved: "Extension override saved successfully",
+    validation: {
+      canvasNotSupported: "Canvas is not supported as an extension override.",
+      markdownNotSupported: "Markdown is not supported as an extension override.",
+      extensionEmpty: "Extension override cannot be empty.",
+      duplicateExtension: "Duplicate extension override.",
+      excludedExtension: "Extension override cannot be an excluded extension."
+    }
+  },
 
   // 错误消息
   errors: {

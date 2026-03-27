@@ -98,10 +98,6 @@ export const zhCn: TranslationMap = {
     buttons: {
       reset: "重置",
       submit: "提交"
-    },
-    notifications: {
-      reset: "已重置 {path} 的附件设置",
-      overridden: "已覆盖 {path} 的附件设置"
     }
   },
 
@@ -148,23 +144,6 @@ export const zhCn: TranslationMap = {
     deleteExtensionOverride: "您确定要删除此扩展名覆盖吗？"
   },
 
-  // 通知消息
-  notices: {
-    settingsSaved: "设置保存成功",
-    overrideSaved: "覆盖设置保存成功",
-    overrideDeleted: "覆盖设置删除成功",
-    extensionOverrideSaved: "扩展名覆盖保存成功",
-    extensionOverrideDeleted: "扩展名覆盖删除成功",
-    attachmentRenamed: "附件重命名成功",
-    attachmentMoved: "附件移动成功",
-    error: {
-      invalidPath: "指定的路径无效",
-      fileNotFound: "文件未找到",
-      permissionDenied: "权限被拒绝",
-      unknownError: "发生未知错误"
-    }
-  },
-
   // 命令
   commands: {
     rearrangeActiveFile: "重新整理当前文件的附件",
@@ -179,12 +158,23 @@ export const zhCn: TranslationMap = {
 
   // 通知消息
   notifications: {
-    success: "操作成功完成",
-    error: "发生错误",
-    warning: "警告",
     arrangeCompleted: "整理完成",
     fileExcluded: "{path} 已被排除",
-    resetAttachmentSetting: "已重置 {path} 的附件设置"
+    fileExcludedSkipped: "{path} 已被排除，已跳过",
+    fileExcludedFromManagement: "{path} 已从附件管理中排除",
+    resetAttachmentSetting: "已重置 {path} 的附件设置",
+    overrideRemoved: "已移除 {path} 的覆盖设置",
+    overrideReset: "已重置 {path} 的附件设置",
+    overrideApplied: "已覆盖 {path} 的附件设置",
+    attachmentRenamed: "已将 {from} 重命名为 {to}。",
+    extensionOverrideSaved: "扩展名覆盖保存成功",
+    validation: {
+      canvasNotSupported: "不支持将 Canvas 作为扩展覆盖。",
+      markdownNotSupported: "不支持将 Markdown 作为扩展覆盖。",
+      extensionEmpty: "扩展覆盖不能为空。",
+      duplicateExtension: "重复的扩展覆盖。",
+      excludedExtension: "扩展覆盖不能是被排除的扩展。"
+    }
   },
 
   // 错误消息
