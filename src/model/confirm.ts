@@ -1,6 +1,6 @@
 import { Modal, Notice, Setting } from "obsidian";
 import AttachmentManagementPlugin from "../main";
-import { ArrangeHandler, RearrangeType } from "../arrange";
+import { ArrangeHandler, RearrangeType, formatArrangeCompletedMessage } from "../arrange";
 import { t } from "../i18n/index";
 
 export class ConfirmModal extends Modal {
@@ -33,12 +33,14 @@ export class ConfirmModal extends Modal {
       })
       .addButton((btn) =>
         btn.setButtonText(t("confirm.continue")).onClick(async () => {
-          new ArrangeHandler(this.plugin.settings, this.plugin.app, this.plugin)
-            .rearrangeAttachment(RearrangeType.LINKS)
-            .finally(() => {
-              new Notice(t("notifications.arrangeCompleted"));
-              this.close();
-            });
+          try {
+            const stats = await new ArrangeHandler(this.plugin.settings, this.plugin.app, this.plugin).rearrangeAttachment(
+              RearrangeType.LINKS
+            );
+            new Notice(formatArrangeCompletedMessage(stats), 8000);
+          } finally {
+            this.close();
+          }
         })
       );
   }

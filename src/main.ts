@@ -14,7 +14,7 @@ import { ConfirmModal } from "./model/confirm";
 import { checkEmptyFolder, getActiveFile } from "./commons";
 import { deleteOverrideSetting, getOverrideSetting, getRenameOverrideSetting, updateOverrideSetting } from "./override";
 import { isAttachment, isMarkdownFile, isCanvasFile, matchExtension, md5sum } from "./utils";
-import { ArrangeHandler, RearrangeType } from "./arrange";
+import { ArrangeHandler, RearrangeType, formatArrangeCompletedMessage } from "./arrange";
 import { CreateHandler } from "./create";
 import { isExcluded } from "./exclude";
 import { getMetadata } from "./settings/metadata";
@@ -243,9 +243,8 @@ export default class AttachmentManagementPlugin extends Plugin {
       id: "attachment-management-rearrange-active-links",
       name: t("commands.rearrangeActiveLinks"),
       callback: async () => {
-        new ArrangeHandler(this.settings, this.app, this).rearrangeAttachment(RearrangeType.ACTIVE).finally(() => {
-          new Notice(t("notifications.arrangeCompleted"));
-        });
+        const stats = await new ArrangeHandler(this.settings, this.app, this).rearrangeAttachment(RearrangeType.ACTIVE);
+        new Notice(formatArrangeCompletedMessage(stats), 8000);
       },
     });
 
