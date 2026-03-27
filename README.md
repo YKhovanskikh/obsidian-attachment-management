@@ -133,6 +133,16 @@ This option is useful if you want to ignore some file types. Write a Regex patte
 
 Automatically rename the attachment folder/filename when you rename the folder/filename where the corresponding md/canvas file is placed.
 
+### SHA-256 Compare Size Limit
+
+If two attachments resolve to the same target filename, the plugin now confirms duplicates by comparing:
+
+- MD5
+- file size
+- SHA-256
+
+SHA-256 is only calculated when the file size is less than or equal to the configured limit in megabytes. If the size is above the limit, the plugin keeps the existing `-N` suffix behavior instead of merging the files. Set the limit to `0` to always allow SHA-256 comparison.
+
 ### Extension Override Setting
 
 This feature allows you to specify the setting for a serials extension. You can use a regex pattern here to override the global setting.

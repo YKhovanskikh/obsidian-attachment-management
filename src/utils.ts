@@ -1,4 +1,4 @@
-import { DataAdapter, Notice, TAbstractFile, TFile } from "obsidian";
+import { App, DataAdapter, Notice, TAbstractFile, TFile } from "obsidian";
 import { AttachmentManagementPluginSettings, AttachmentPathSettings } from "./settings/settings";
 import { t } from "./i18n/index";
 
@@ -93,18 +93,27 @@ export function matchExtension(extension: string, pattern: string): boolean {
   return new RegExp(pattern).test(extension);
 }
 
+function getObsidianApp(): App | undefined {
+  return (globalThis as { app?: App }).app;
+}
+
 /**
  * Check whether the file is an attachment
  * @param settings plugins configuration
  * @param filePath file path
  * @returns true if the file is an attachment, false otherwise
  */
-export function isAttachment(settings: AttachmentManagementPluginSettings, filePath: string | TAbstractFile): boolean {
+export function isAttachment(
+  settings: AttachmentManagementPluginSettings,
+  filePath: string | TAbstractFile,
+  app?: App
+): boolean {
   let file = null;
   if (filePath instanceof TAbstractFile) {
     file = filePath;
   } else {
-    file = this.app.vault.getAbstractFileByPath(filePath);
+    const resolvedApp = app ?? getObsidianApp();
+    file = resolvedApp ? resolvedApp.vault.getAbstractFileByPath(filePath) : null;
   }
 
   if (file === null || !(file instanceof TFile)) {
@@ -132,7 +141,7 @@ export function getParentFolder(rf: TFile) {
 export async function md5sum(adapter: DataAdapter, file: TFile): Promise<string> {
   const md5 = new Md5();
 
-  if (!adapter.exists(file.path, true)) {
+  if (!(await adapter.exists(file.path, true))) {
     return "";
   }
 
@@ -141,6 +150,20 @@ export async function md5sum(adapter: DataAdapter, file: TFile): Promise<string>
   const ret = md5.end() as string;
 
   return ret.toUpperCase();
+}
+
+export async function sha256sum(adapter: DataAdapter, file: TFile): Promise<string> {
+  if (!(await adapter.exists(file.path, true))) {
+    return "";
+  }
+
+  const content = await adapter.readBinary(file.path);
+  const digest = await crypto.subtle.digest("SHA-256", content);
+
+  return Array.from(new Uint8Array(digest))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
 }
 
 export function validateExtensionEntry(setting: AttachmentPathSettings, plugin: AttachmentManagementPluginSettings) {
